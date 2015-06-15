@@ -1,6 +1,8 @@
 package com.example.sanderson.bluetoothaula;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothServerSocket;
+import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -8,11 +10,17 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import java.io.IOException;
+import java.util.UUID;
+
 
 public class MainActivity extends ActionBarActivity {
 
     private static final int REQUEST_ENABLE_BT = 100;
     private BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+    private AcceptThread acceptThread;
+
+    private UUID uuid = UUID.fromString("");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,20 +34,78 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        isBluetoothAtivo();
-    }
-
     private void isBluetoothAtivo(){
         if (!adapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }else{
             Toast.makeText(this,"Bluetooth está ativo",Toast.LENGTH_SHORT).show();
+            acceptThread = new AcceptThread();
+            acceptThread.start();
         }
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        isBluetoothAtivo();
+    }
+
+
+
+    private class AcceptThread extends Thread{
+
+        private final BluetoothServerSocket serverSocket;
+
+        private AcceptThread() {
+
+            BluetoothServerSocket tmp = null;
+
+            try {
+                tmp = adapter.listenUsingRfcommWithServiceRecord("server",uuid);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            this.serverSocket = tmp;
+        }
+
+
+        @Override
+        public void run() {
+
+            BluetoothSocket socket = null;
+
+            while(true){
+
+                try {
+                    socket = serverSocket.accept();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    break;
+                }
+
+            }
+
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
