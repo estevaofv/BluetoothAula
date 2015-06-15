@@ -4,6 +4,8 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -14,7 +16,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.UUID;
+
+import java.util.logging.LogRecord;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -22,7 +28,10 @@ public class MainActivity extends ActionBarActivity {
     private static final int REQUEST_ENABLE_BT = 100;
     private BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
     private AcceptThread acceptThread;
+    private ConnectedThread conn;
+
     private UUID uuid = UUID.fromString("00002415-0000-1000-8000-00805F9B34FB");
+    private static final int MESSAGE_READ = 1;
 
 
     private EditText input;
@@ -50,6 +59,10 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
+    public void escreverNaTela(String msg){
+        output.setText(msg);
+    }
+
     private void isBluetoothAtivo(){
         if (!adapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -67,7 +80,10 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
-
+    /**
+     * CLASSE PRIVADA PARA ESPERAR
+     * UMA CONEXÃO CLIENTE
+     */
     private class AcceptThread extends Thread{
 
         private final BluetoothServerSocket serverSocket;
@@ -93,10 +109,17 @@ public class MainActivity extends ActionBarActivity {
             while(true){
 
                 try {
-                    socket = serverSocket.accept();
+                    //método bloqueante de espera de conexão
+                    socket  = serverSocket.accept();
                 } catch (IOException e) {
                     e.printStackTrace();
                     break;
+                }
+
+                if(socket !=null){
+                    // conexão ok
+                    // chamar próxima thread
+                    gerenciarConexao(socket);
                 }
 
             }
@@ -105,21 +128,69 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
+    /**
+     * MÉTODO PONTE
+     * ENTRE AS DUAS THREADS
+     * @param socket
+     */
+    private void gerenciarConexao(BluetoothSocket socket){
+        this.conn = new ConnectedThread(socket);
+    }
 
 
 
+    /**
+     * CLASSE PRIVADA PARA GERENCIAR A CONEXÃO, ENVIO E RECEBIMENTO
+     * DE INFORMAÇÕES VIA BluetoothSocket
+     */
+    private class ConnectedThread extends Thread{
+
+        private BluetoothSocket socket;
+        private InputStream input;
+        private OutputStream output;
+
+        private ConnectedThread(BluetoothSocket socket){
+            this.socket = socket;
+            try {
+                input = socket.getInputStream();
+                output = socket.getOutputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void run() {
+
+            byte[] buffer = new byte[1024];
+            int bytes;
+            try {
+                bytes = input.read(buffer);
+                // Send the obtained bytes to the UI activity
+                mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer)
+                        .sendToTarget();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
 
 
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MESSAGE_READ:
+                    byte[] readBuf = (byte[]) msg.obj;
+                    // construct a string from the valid bytes in the buffer
+                    String readMessage = new String(readBuf, 0, msg.arg1);
+                    output.setText(readMessage);
 
-
-
-
-
-
-
-
-
+                    break;
+            }
+        }
+    };
 
 
 
