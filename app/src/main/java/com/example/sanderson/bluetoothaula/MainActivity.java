@@ -8,6 +8,9 @@ import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -19,13 +22,20 @@ public class MainActivity extends ActionBarActivity {
     private static final int REQUEST_ENABLE_BT = 100;
     private BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
     private AcceptThread acceptThread;
+    private UUID uuid = UUID.fromString("00002415-0000-1000-8000-00805F9B34FB");
 
-    private UUID uuid = UUID.fromString("");
+
+    private EditText input;
+    private TextView output;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        input = (EditText)findViewById(R.id.input);
+        output = (TextView) findViewById(R.id.output);
 
         if(adapter==null){
             Toast.makeText(this,"Não tem bluetooth", Toast.LENGTH_LONG).show();
@@ -33,6 +43,12 @@ public class MainActivity extends ActionBarActivity {
             isBluetoothAtivo();
         }
     }
+
+
+    public void enviar(View v){
+        output.setText("txt:"+input.getText().toString());
+    }
+
 
     private void isBluetoothAtivo(){
         if (!adapter.isEnabled()) {
